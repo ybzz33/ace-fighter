@@ -1122,43 +1122,48 @@ function drawHUD() {
   ctx.fillStyle = '#8fd0ff';
   ctx.fillText('波次 ' + game.wave + (game.combo > 1 ? '  连击 x' + game.combo : ''), 14, 50);
 
-  // 技能栏
+  // 技能栏（左下角：图形化图标 + 使用后倒计时冷却）
   const skillMeta = [
-    { key:'1', name:'护盾', color:'#69f0ff', icon:'◈' },
-    { key:'2', name:'轰炸', color:'#ffd166', icon:'✸' },
-    { key:'3', name:'火力', color:'#ff9f43', icon:'➤' },
+    { key:'1', name:'护盾', color:'#69f0ff' },
+    { key:'2', name:'轰炸', color:'#ffd166' },
+    { key:'3', name:'火力', color:'#ff9f43' },
   ];
+  const skSize = 58, skGap = 12, skL = 14, skB = 60;
   for (let i = 0; i < 3; i++) {
     const s = skillMeta[i];
-    const x = 14 + i * 62, y = H - 52, size = 54;
+    const x = skL + i * (skSize + skGap), y = H - skB, size = skSize;
     const cd = p.skillCd[i], max = p.skillMaxCd[i];
     const ready = cd <= 0;
-    ctx.fillStyle = 'rgba(10,16,40,0.75)';
-    ctx.beginPath(); rr(x, y, size, size, 8); ctx.fill();
-    ctx.strokeStyle = ready ? s.color : 'rgba(255,255,255,0.2)';
+    // 半透明底板
+    ctx.fillStyle = 'rgba(10,16,40,0.78)';
+    ctx.beginPath(); rr(x, y, size, size, 10); ctx.fill();
+    ctx.strokeStyle = ready ? s.color : 'rgba(255,255,255,0.22)';
     ctx.lineWidth = ready ? 2.5 : 1.5;
-    ctx.beginPath(); rr(x, y, size, size, 8); ctx.stroke();
-    // 冷却遮罩（自下而上消退，显示剩余冷却进度）
+    ctx.beginPath(); rr(x, y, size, size, 10); ctx.stroke();
+    // 图形化技能图标
+    drawSkillIcon(i, x, y, size, ready ? s.color : '#4a5675');
     if (!ready) {
+      // 使用后：黑化图标 + 中央大号倒计时 + 外圈进度弧
       const pct = clamp(cd / max, 0, 1);
       ctx.fillStyle = 'rgba(0,0,0,0.55)';
-      ctx.fillRect(x, y + size * (1 - pct), size, size * pct);
-    }
-    ctx.fillStyle = ready ? s.color : '#5a6a95';
-    ctx.font = 'bold 20px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(s.icon, x + size/2, y + 24);
-    ctx.font = 'bold 10px "Microsoft YaHei"';
-    ctx.fillText(s.key + ' ' + s.name, x + size/2, y + 44);
-    if (!ready) {
-      // 剩余冷却秒数 + 百分比
+      ctx.beginPath(); rr(x, y, size, size, 10); ctx.fill();
+      const cx = x + size/2, cy = y + size/2 - 6, r = size/2 - 6;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, -Math.PI/2, -Math.PI/2 + Math.PI * 2 * pct);
+      ctx.stroke();
       ctx.fillStyle = '#fff';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.fillText(cd.toFixed(1) + 's', x + size/2, y + size/2 + 2);
-      ctx.font = 'bold 9px sans-serif';
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
-      ctx.fillText(Math.round((1 - cd/max) * 100) + '%', x + size/2, y + size/2 + 14);
+      ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(cd) + 's', cx, cy + 6);
     }
+    // 键位 + 名称
+    ctx.fillStyle = ready ? s.color : '#5a6a95';
+    ctx.font = 'bold 10px "Microsoft YaHei"';
+    ctx.textAlign = 'center';
+    ctx.fillText(s.key + ' ' + s.name, x + size/2, y + size - 4);
   }
 
   // 顶部小标题
@@ -1166,6 +1171,68 @@ function drawHUD() {
   ctx.fillStyle = 'rgba(160,180,255,0.85)';
   ctx.font = 'bold 12px "Microsoft YaHei"';
   ctx.fillText('毅博老师 · 飞机大战', W/2, H - 14);
+}
+
+/* ---------------- 技能图形图标：0护盾 / 1炸弹 / 2火力 ---------------- */
+function drawSkillIcon(ki, bx, by, size, color) {
+  const cx = bx + size / 2, cy = by + size / 2 - 7, s = size * 0.34;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  if (ki === 0) {
+    // 护盾（盾形）
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - s * 1.1);
+    ctx.quadraticCurveTo(cx + s, cy - s * 1.1, cx + s * 0.95, cy - s * 0.35);
+    ctx.quadraticCurveTo(cx + s * 0.85, cy + s * 0.9, cx, cy + s * 1.25);
+    ctx.quadraticCurveTo(cx - s * 0.85, cy + s * 0.9, cx - s * 0.95, cy - s * 0.35);
+    ctx.quadraticCurveTo(cx - s, cy - s * 1.1, cx, cy - s * 1.1);
+    ctx.closePath();
+    ctx.fill();
+    // 盾面横纹
+    ctx.strokeStyle = 'rgba(10,16,40,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - s * 0.6, cy - s * 0.15);
+    ctx.lineTo(cx + s * 0.6, cy - s * 0.15);
+    ctx.stroke();
+  } else if (ki === 1) {
+    // 炸弹（圆球 + 引线 + 火星）
+    ctx.beginPath();
+    ctx.arc(cx, cy + s * 0.1, s * 0.72, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(cx + s * 0.3, cy - s * 0.5);
+    ctx.quadraticCurveTo(cx + s * 0.7, cy - s * 1.0, cx + s * 0.35, cy - s * 1.35);
+    ctx.stroke();
+    ctx.fillStyle = '#ff5f5f';
+    ctx.beginPath();
+    ctx.arc(cx + s * 0.35, cy - s * 1.45, s * 0.22, 0, Math.PI * 2);
+    ctx.fill();
+    // 高光
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.beginPath();
+    ctx.arc(cx - s * 0.3, cy - s * 0.05, s * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // 火力（星芒火焰）
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - s * 1.2);
+    ctx.lineTo(cx + s * 0.28, cy - s * 0.3);
+    ctx.lineTo(cx + s * 1.05, cy - s * 0.35);
+    ctx.lineTo(cx + s * 0.45, cy + s * 0.2);
+    ctx.lineTo(cx + s * 0.6, cy + s * 0.95);
+    ctx.lineTo(cx, cy + s * 0.5);
+    ctx.lineTo(cx - s * 0.6, cy + s * 0.95);
+    ctx.lineTo(cx - s * 0.45, cy + s * 0.2);
+    ctx.lineTo(cx - s * 1.05, cy - s * 0.35);
+    ctx.lineTo(cx - s * 0.28, cy - s * 0.3);
+    ctx.closePath();
+    ctx.fill();
+  }
 }
 
 /* ---------------- 圆角矩形绘制（含低版本兜底） ---------------- */
