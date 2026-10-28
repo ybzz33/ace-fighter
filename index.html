@@ -309,7 +309,7 @@ function loadFeedback() { try { feedbackList = JSON.parse(localStorage.getItem(F
 function saveFeedback() { try { localStorage.setItem(FB_KEY, JSON.stringify(feedbackList)); } catch(e) {} }
 function addFeedback(text) { const fb = { name: playerName, text, time: Date.now() }; feedbackList.push(fb); saveFeedback(); syncToGitHub(fb); }
 function syncToGitHub(fb) {
-    const token = ''; // 在此填入 GitHub Personal Access Token
+    const token = ''; // GitHub Token 已移除，反馈仅保存到本地 localStorage
     if (!token) return;
     const d = new Date(fb.time);
     const timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
