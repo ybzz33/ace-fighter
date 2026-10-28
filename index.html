@@ -33,15 +33,15 @@ html,body { width:100%; height:100%; overflow:hidden; background:#02030a; font-f
 .sk b { font-size:18px; }
 @media (pointer:coarse), (hover:none) { #controls { display:block; } #hint { display:none; } }
 @media (max-width:640px){ #hint{ font-size:10px; } }
-#leaderboard-panel, #feedback-panel, #admin-panel, #name-panel {
+#leaderboard-panel, #name-panel {
   position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
   width:340px; background:rgba(8,12,36,0.95); backdrop-filter:blur(12px);
   border:1px solid rgba(100,160,255,0.25); border-radius:16px;
   padding:24px 28px; z-index:30; display:none;
   box-shadow:0 0 40px rgba(60,120,255,0.2);
 }
-#leaderboard-panel.visible, #feedback-panel.visible, #admin-panel.visible, #name-panel.visible { display:block; }
-#leaderboard-panel h3, #feedback-panel h3, #admin-panel h3 {
+#leaderboard-panel.visible, #name-panel.visible { display:block; }
+#leaderboard-panel h3 {
   text-align:center; color:#ffd166; font-size:20px; margin-bottom:16px;
   text-shadow:0 0 12px rgba(255,209,102,0.4);
 }
@@ -64,12 +64,12 @@ html,body { width:100%; height:100%; overflow:hidden; background:#02030a; font-f
 .lb-item .lb-score { flex:1; text-align:right; font-weight:bold; color:#fff; font-size:16px; }
 .lb-item .lb-wave { color:#8fa3d9; font-size:12px; margin-left:10px; }
 .lb-empty { text-align:center; color:#5a6a95; font-size:13px; padding:20px 0; }
-.lb-close, .fb-close, .admin-close {
+.lb-close {
   display:block; margin:16px auto 0; padding:8px 28px; border-radius:8px;
   background:rgba(100,160,255,0.2); color:#cfe3ff; border:1px solid rgba(100,160,255,0.4);
   font-size:14px; cursor:pointer; font-family:"Microsoft YaHei",sans-serif;
 }
-.lb-close:hover, .fb-close:hover, .admin-close:hover { background:rgba(100,160,255,0.35); }
+.lb-close:hover { background:rgba(100,160,255,0.35); }
 #name-input {
   width:100%; padding:10px 14px; border-radius:8px; border:1px solid rgba(100,160,255,0.4);
   background:rgba(20,30,70,0.6); color:#fff; font-size:16px; font-family:"Microsoft YaHei",sans-serif;
@@ -82,29 +82,6 @@ html,body { width:100%; height:100%; overflow:hidden; background:#02030a; font-f
   font-size:16px; font-weight:bold; cursor:pointer; font-family:"Microsoft YaHei",sans-serif;
 }
 #name-submit:hover { background:linear-gradient(135deg,#6dd5ff,#1976d2); }
-#fb-textarea {
-  width:100%; height:100px; padding:10px; border-radius:8px; border:1px solid rgba(100,160,255,0.4);
-  background:rgba(20,30,70,0.6); color:#fff; font-size:14px; font-family:"Microsoft YaHei",sans-serif;
-  resize:none; outline:none; margin-bottom:10px;
-}
-#fb-textarea:focus { border-color:rgba(100,180,255,0.8); }
-#fb-submit {
-  display:block; width:100%; padding:10px; border-radius:8px;
-  background:linear-gradient(135deg,#69f0ae,#2e7d32); color:#fff; border:none;
-  font-size:15px; font-weight:bold; cursor:pointer; font-family:"Microsoft YaHei",sans-serif;
-}
-#fb-submit:hover { background:linear-gradient(135deg,#81f7c0,#388e3c); }
-.fb-success { text-align:center; color:#69f0ae; font-size:14px; margin-top:10px; display:none; }
-.admin-list { max-height:300px; overflow-y:auto; margin-bottom:10px; }
-.admin-item { padding:8px; margin-bottom:6px; background:rgba(255,255,255,0.04); border-radius:6px; font-size:13px; color:#cfe3ff; }
-.admin-item .fb-name { color:#ffd166; font-weight:bold; }
-.admin-item .fb-time { color:#5a6a95; font-size:11px; }
-.admin-item .fb-text { margin-top:4px; color:#fff; }
-.admin-export {
-  display:block; width:100%; padding:8px; border-radius:8px;
-  background:rgba(255,200,60,0.2); color:#ffd166; border:1px solid rgba(255,200,60,0.4);
-  font-size:13px; cursor:pointer; font-family:"Microsoft YaHei",sans-serif; margin-top:8px;
-}
 </style>
 </head>
 <body>
@@ -123,19 +100,6 @@ html,body { width:100%; height:100%; overflow:hidden; background:#02030a; font-f
   </div>
   <ul class="lb-list" id="lb-list"></ul>
   <button class="lb-close" id="lb-close">关闭</button>
-</div>
-<div id="feedback-panel">
-  <h3> 游戏反馈</h3>
-  <textarea id="fb-textarea" placeholder="写下你的建议或想法..."></textarea>
-  <button id="fb-submit">提交反馈</button>
-  <div class="fb-success" id="fb-success">感谢你的反馈！</div>
-  <button class="fb-close" id="fb-close">关闭</button>
-</div>
-<div id="admin-panel">
-  <h3> 反馈管理</h3>
-  <div class="admin-list" id="admin-list"></div>
-  <button class="admin-export" id="admin-export">导出 JSON</button>
-  <button class="admin-close" id="admin-close">关闭</button>
 </div>
 <div id="hint">
 移动: 方向键 / WASD / 鼠标 · 射击: 空格(可按住) 或 鼠标左键<br>
@@ -257,7 +221,6 @@ canvas.addEventListener('touchstart', e => {
         for (const btn of menuButtons) {
             if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
                 if (btn.action === 'leaderboard') showLeaderboard();
-                else if (btn.action === 'feedback') showFeedback();
                 else { gameMode = btn.action; startGame(btn.action); }
                 return;
             }
@@ -289,8 +252,7 @@ const player = { x: W/2, y: H-130, w: 46, h: 50, hp: 100, maxHp: 100, fireCd: 0,
 let bullets = [], enemies = [], ebullets = [], particles = [], stars = [], powerups = [], boss = null;
 let invincibleMode = false, gameMode = 'normal', playerName = '玩家';
 let leaderboard = { normal: [], invincible: [] };
-let feedbackList = [];
-const LB_KEY = 'acf_leaderboard', FB_KEY = 'acf_feedback', NAME_KEY = 'acf_name';
+const LB_KEY = 'acf_leaderboard', NAME_KEY = 'acf_name';
 const LB_MAX = 10;
 
 function loadLeaderboard() { try { const d = JSON.parse(localStorage.getItem(LB_KEY)); if (d && d.normal) leaderboard = d; } catch(e) {} }
@@ -305,24 +267,9 @@ function renderLeaderboard(mode) {
         return `<li class="lb-item"><span class="rank ${rc}">${medal}</span><span class="lb-score">${String(item.score).padStart(6,'0')}</span><span class="lb-wave">${item.name || '匿名'} · 波${item.wave}</span></li>`;
     }).join('');
 }
-function loadFeedback() { try { feedbackList = JSON.parse(localStorage.getItem(FB_KEY)) || []; } catch(e) { feedbackList = []; } }
-function saveFeedback() { try { localStorage.setItem(FB_KEY, JSON.stringify(feedbackList)); } catch(e) {} }
-function addFeedback(text) { const fb = { name: playerName, text, time: Date.now() }; feedbackList.push(fb); saveFeedback(); syncToGitHub(fb); }
-function syncToGitHub(fb) {
-    const token = ''; // GitHub Token 已移除，反馈仅保存到本地 localStorage
-    if (!token) return;
-    const d = new Date(fb.time);
-    const timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-    const body = '**玩家：** ' + (fb.name || '匿名') + '\n**时间：** ' + timeStr + '\n**模式：** ' + gameMode + '\n**分数：** ' + game.score + '\n**波次：** ' + game.wave + '\n\n---\n\n' + fb.text;
-    fetch('https://api.github.com/repos/ybzz33/ace-fighter/issues', {
-        method: 'POST',
-        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: '[反馈] ' + (fb.name || '匿名') + ' - ' + timeStr, body: body, labels: ['feedback'] })
-    }).catch(e => console.log('GitHub sync failed:', e));
-}
 function loadPlayerName() { try { const n = localStorage.getItem(NAME_KEY); if (n) playerName = n; } catch(e) {} }
 function savePlayerName() { try { localStorage.setItem(NAME_KEY, playerName); } catch(e) {} }
-loadLeaderboard(); loadFeedback(); loadPlayerName();
+loadLeaderboard(); loadPlayerName();
 
 let namePanelShown = false;
 function showNamePanel() { const panel = $('name-panel'); const input = $('name-input'); panel.classList.add('visible'); input.value = playerName !== '玩家' ? playerName : ''; input.focus(); namePanelShown = true; }
@@ -625,8 +572,6 @@ function drawHUD() {
     ctx.fillText('毅博老师 · 飞机大战' + modeLabel, W/2, H - 14);
     ctx.fillStyle = 'rgba(100,160,255,0.7)'; ctx.font = '11px "Microsoft YaHei"'; ctx.textAlign = 'right';
     ctx.fillText('Esc 菜单', W - 14, H - 14);
-    ctx.fillStyle = 'rgba(100,200,150,0.6)'; ctx.textAlign = 'left';
-    ctx.fillText('反馈', 14, H - 14);
 }
 
 function drawSkillIcon(ki, bx, by, size, color) {
@@ -658,7 +603,6 @@ function drawMenu() {
     const btnY = H/2 + 10;
     const btn1X = W/2 - btnW - btnGap/2, btn2X = W/2 + btnGap/2;
     const btn3W = 120, btn3X = W/2 - btn3W/2, btn3Y = btnY + btnH + 12;
-    const btn4W = 120, btn4X = W/2 - btn4W/2, btn4Y = btn3Y + 42 + 8;
     const blink = 0.7 + Math.sin(game.time*3)*0.3;
     ctx.globalAlpha = clamp(blink, 0.4, 1);
     ctx.fillStyle = 'rgba(30,80,180,0.35)'; ctx.strokeStyle = 'rgba(100,180,255,0.7)'; ctx.lineWidth = 2;
@@ -671,8 +615,6 @@ function drawMenu() {
     ctx.fillStyle = 'rgba(20,40,80,0.4)'; ctx.strokeStyle = 'rgba(100,160,255,0.4)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); rr(btn3X, btn3Y, btn3W, 36, 10); ctx.fill(); ctx.stroke();
     ctx.fillStyle = '#8fa3d9'; ctx.font = '13px "Microsoft YaHei"'; ctx.fillText(' 排行榜', btn3X + btn3W/2, btn3Y + 22);
-    ctx.beginPath(); rr(btn4X, btn4Y, btn4W, 36, 10); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#8fa3d9'; ctx.fillText(' 反馈', btn4X + btn4W/2, btn4Y + 22);
     ctx.font = '12px "Microsoft YaHei"'; ctx.fillStyle = '#6a7bb8';
     const moveHint = isTouch ? '左摇杆移动 · 右侧射击键开火' : '方向键 / WASD / 鼠标移动 · 空格或鼠标射击';
     ctx.fillText(moveHint, W/2, H - 80);
@@ -683,7 +625,6 @@ function drawMenu() {
         { x: btn1X, y: btnY, w: btnW, h: btnH, action: 'normal' },
         { x: btn2X, y: btnY, w: btnW, h: btnH, action: 'invincible' },
         { x: btn3X, y: btn3Y, w: btn3W, h: 36, action: 'leaderboard' },
-        { x: btn4X, y: btn4Y, w: btn4W, h: 36, action: 'feedback' },
     ];
 }
 
@@ -707,7 +648,7 @@ function drawGameOver() {
 function drawPause() { ctx.fillStyle = 'rgba(2,3,12,0.6)'; ctx.fillRect(0,0,W,H); ctx.textAlign = 'center'; ctx.font = 'bold 40px "Microsoft YaHei"'; ctx.fillStyle = '#fff'; ctx.fillText('已暂停', W/2, H/2 - 20); ctx.font = '15px "Microsoft YaHei"'; ctx.fillStyle = '#9fb3ff'; ctx.fillText('按 P 继续', W/2, H/2 + 24); }
 
 let lastT = 0;
-function isPanelVisible() { return namePanelShown || $('feedback-panel').classList.contains('visible') || $('admin-panel').classList.contains('visible') || $('leaderboard-panel').classList.contains('visible'); }
+function isPanelVisible() { return namePanelShown || $('leaderboard-panel').classList.contains('visible'); }
 function frame(ts) {
     const dt = clamp((ts - lastT) / 1000, 0, 0.05); lastT = ts;
     if (isPanelVisible()) { Input.keydown = {}; Input.keyup = {}; game.time += dt; updateStars(dt); updateParticles(dt); ctx.clearRect(0,0,W,H); if (game.state === GS.MENU) drawMenu(); else { drawBackground(); ctx.save(); powerups.forEach(drawPowerup); for (const e of enemies) drawEnemy(e); if (boss) drawBoss(); drawPlayer(); for (const b of bullets) { ctx.save(); ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 8; ctx.fillRect(b.x-3, b.y-7, 6, 14); ctx.restore(); } for (const b of ebullets) { ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI*2); ctx.fillStyle = b.color; ctx.shadowColor = b.color; ctx.shadowBlur = 10; ctx.fill(); ctx.shadowBlur = 0; ctx.beginPath(); ctx.arc(b.x, b.y, b.r*0.5, 0, Math.PI*2); ctx.fillStyle = '#fff'; ctx.fill(); } drawParticles(); ctx.restore(); drawHUD(); drawBanner(); } requestAnimationFrame(frame); return; }
@@ -729,8 +670,6 @@ function frame(ts) {
     if (Input.keydown['KeyP'] && game.state === GS.PLAY) game.state = GS.PAUSE;
     else if (Input.keydown['KeyP'] && game.state === GS.PAUSE) game.state = GS.PLAY;
     if (Input.keydown['KeyM']) Audio.toggleMute();
-    if (Input.keydown['KeyF'] && game.state === GS.PLAY) { showFeedback(); Input.keydown = {}; }
-    if (Input.keydown['ControlLeft'] && Input.keydown['ShiftLeft'] && Input.keydown['KeyA']) { showAdmin(); Input.keydown = {}; }
     game.time += dt; updateStars(dt); updateParticles(dt);
     if (game.state === GS.PLAY) { updatePlayer(dt); updateBullets(dt); updateEnemies(dt); updateEBullets(dt); if (boss) updateBoss(dt); updatePowerups(dt); updateSpawning(dt); checkWaveProgress(); handleCollisions(); }
     ctx.clearRect(0,0,W,H);
@@ -755,18 +694,10 @@ function startGame(mode) { if (mode) gameMode = mode; resetGame(); game.state = 
 const resetPlayer = () => { Object.assign(player, { x: W/2, y: H-130, hp: 100, fireCd: 0, invincible: 2, shieldT: 0, powerT: 0, skillCd: [0,0,0,0], flashT: 0, alive: true, healBuff: 0, healTick: 0 }); };
 const resetGame = () => { bullets = []; enemies = []; ebullets = []; particles = []; powerups = []; boss = null; game.score = 0; game.wave = 1; game.time = 0; game.shake = 0; game.spawnTimer = 1.2; game.bossTimer = 0; game.combo = 0; game.comboMax = 0; game.kills = 0; game.flash = 0; invincibleMode = (gameMode === 'invincible'); $('invincible-hud').classList.toggle('visible', invincibleMode); resetPlayer(); };
 
-function handleMenuClick(e) { const r = canvas.getBoundingClientRect(); const mx = (e.clientX - r.left) / r.width * W; const my = (e.clientY - r.top) / r.height * H; for (const btn of menuButtons) { if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) { if (btn.action === 'leaderboard') showLeaderboard(); else if (btn.action === 'feedback') showFeedback(); else { gameMode = btn.action; startGame(btn.action); } return; } } }
+function handleMenuClick(e) { const r = canvas.getBoundingClientRect(); const mx = (e.clientX - r.left) / r.width * W; const my = (e.clientY - r.top) / r.height * H; for (const btn of menuButtons) { if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) { if (btn.action === 'leaderboard') showLeaderboard(); else { gameMode = btn.action; startGame(btn.action); } return; } } }
 
 function showLeaderboard() { const panel = $('leaderboard-panel'); panel.classList.add('visible'); renderLeaderboard('normal'); document.querySelectorAll('.lb-tab').forEach(tab => { tab.classList.toggle('active', tab.dataset.mode === 'normal'); tab.onclick = () => { document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active')); tab.classList.add('active'); renderLeaderboard(tab.dataset.mode); }; }); }
 $('lb-close').addEventListener('click', () => { $('leaderboard-panel').classList.remove('visible'); });
-
-function showFeedback() { $('feedback-panel').classList.add('visible'); $('fb-success').style.display = 'none'; $('fb-textarea').value = ''; }
-$('fb-close').addEventListener('click', () => { $('feedback-panel').classList.remove('visible'); });
-$('fb-submit').addEventListener('click', () => { const text = $('fb-textarea').value.trim(); if (!text) return; addFeedback(text); $('fb-success').style.display = 'block'; setTimeout(() => { $('feedback-panel').classList.remove('visible'); }, 1500); });
-
-function showAdmin() { const panel = $('admin-panel'); panel.classList.add('visible'); const list = $('admin-list'); if (feedbackList.length === 0) { list.innerHTML = '<div class="admin-item" style="text-align:center;color:#5a6a95;">暂无反馈</div>'; return; } list.innerHTML = feedbackList.slice().reverse().map(fb => { const d = new Date(fb.time); const timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); return `<div class="admin-item"><span class="fb-name">${fb.name || '匿名'}</span> <span class="fb-time">${timeStr}</span><div class="fb-text">${fb.text}</div></div>`; }).join(''); }
-$('admin-close').addEventListener('click', () => { $('admin-panel').classList.remove('visible'); });
-$('admin-export').addEventListener('click', () => { const data = JSON.stringify(feedbackList, null, 2); const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'feedback_' + Date.now() + '.json'; a.click(); URL.revokeObjectURL(url); });
 
 try { game.best = parseInt(localStorage.getItem('acf_best') || '0', 10) || 0; } catch(e) {}
 window.addEventListener('pointerdown', () => Audio.unlock(), {once:false});
