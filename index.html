@@ -307,7 +307,19 @@ function renderLeaderboard(mode) {
 }
 function loadFeedback() { try { feedbackList = JSON.parse(localStorage.getItem(FB_KEY)) || []; } catch(e) { feedbackList = []; } }
 function saveFeedback() { try { localStorage.setItem(FB_KEY, JSON.stringify(feedbackList)); } catch(e) {} }
-function addFeedback(text) { feedbackList.push({ name: playerName, text, time: Date.now() }); saveFeedback(); }
+function addFeedback(text) { const fb = { name: playerName, text, time: Date.now() }; feedbackList.push(fb); saveFeedback(); syncToGitHub(fb); }
+function syncToGitHub(fb) {
+    const token = ''; // 在此填入 GitHub Personal Access Token
+    if (!token) return;
+    const d = new Date(fb.time);
+    const timeStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    const body = '**玩家：** ' + (fb.name || '匿名') + '\n**时间：** ' + timeStr + '\n**模式：** ' + gameMode + '\n**分数：** ' + game.score + '\n**波次：** ' + game.wave + '\n\n---\n\n' + fb.text;
+    fetch('https://api.github.com/repos/ybzz33/ace-fighter/issues', {
+        method: 'POST',
+        headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: '[反馈] ' + (fb.name || '匿名') + ' - ' + timeStr, body: body, labels: ['feedback'] })
+    }).catch(e => console.log('GitHub sync failed:', e));
+}
 function loadPlayerName() { try { const n = localStorage.getItem(NAME_KEY); if (n) playerName = n; } catch(e) {} }
 function savePlayerName() { try { localStorage.setItem(NAME_KEY, playerName); } catch(e) {} }
 loadLeaderboard(); loadFeedback(); loadPlayerName();

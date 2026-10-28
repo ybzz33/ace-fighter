@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>飞机大战 · 反馈管理后台</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a0e1a; color:#e0e8ff; font-family:"Microsoft YaHei","PingFang SC",sans-serif; min-height:100vh; }
+.header { background:linear-gradient(135deg,#0d1430,#1a1040); border-bottom:1px solid rgba(100,160,255,0.15); padding:20px 30px; display:flex; align-items:center; justify-content:space-between; }
+.header h1 { font-size:22px; color:#ffd166; text-shadow:0 0 12px rgba(255,209,102,0.3); }
+.header .stats { display:flex; gap:20px; font-size:14px; color:#8fa3d9; }
+.header .stats b { color:#fff; font-size:18px; }
+.container { max-width:900px; margin:0 auto; padding:24px 20px; }
+.token-bar { background:rgba(20,30,60,0.8); border:1px solid rgba(100,160,255,0.2); border-radius:12px; padding:16px 20px; margin-bottom:20px; display:flex; gap:12px; align-items:center; }
+.token-bar label { font-size:14px; color:#8fa3d9; white-space:nowrap; }
+.token-bar input { flex:1; padding:8px 12px; border-radius:8px; border:1px solid rgba(100,160,255,0.3); background:rgba(10,15,35,0.8); color:#fff; font-size:14px; outline:none; }
+.token-bar input:focus { border-color:rgba(100,180,255,0.6); }
+.token-bar button { padding:8px 20px; border-radius:8px; border:none; background:linear-gradient(135deg,#4fc3f7,#1565c0); color:#fff; font-size:14px; font-weight:bold; cursor:pointer; white-space:nowrap; }
+.token-bar button:hover { background:linear-gradient(135deg,#6dd5ff,#1976d2); }
+.token-bar .hint { font-size:12px; color:#5a6a95; margin-top:4px; }
+.filter-bar { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; align-items:center; }
+.filter-bar select, .filter-bar input { padding:7px 12px; border-radius:8px; border:1px solid rgba(100,160,255,0.25); background:rgba(20,30,60,0.8); color:#fff; font-size:13px; outline:none; }
+.filter-bar select:focus, .filter-bar input:focus { border-color:rgba(100,180,255,0.5); }
+.filter-bar .refresh-btn { padding:7px 16px; border-radius:8px; border:1px solid rgba(100,160,255,0.3); background:rgba(20,30,60,0.8); color:#cfe3ff; font-size:13px; cursor:pointer; }
+.filter-bar .refresh-btn:hover { background:rgba(40,60,100,0.8); }
+.fb-list { display:flex; flex-direction:column; gap:10px; }
+.fb-card { background:rgba(20,30,60,0.7); border:1px solid rgba(100,160,255,0.15); border-radius:12px; padding:16px 20px; transition:border-color 0.2s; }
+.fb-card:hover { border-color:rgba(100,160,255,0.35); }
+.fb-card .fb-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.fb-card .fb-name { font-weight:bold; color:#ffd166; font-size:15px; }
+.fb-card .fb-time { color:#5a6a95; font-size:12px; }
+.fb-card .fb-meta { display:flex; gap:12px; margin-bottom:10px; font-size:12px; color:#8fa3d9; }
+.fb-card .fb-meta span { background:rgba(100,160,255,0.1); padding:2px 8px; border-radius:4px; }
+.fb-card .fb-text { color:#dce6ff; font-size:14px; line-height:1.7; white-space:pre-wrap; word-break:break-word; }
+.fb-card .fb-actions { margin-top:10px; display:flex; gap:8px; }
+.fb-card .fb-actions button { padding:4px 12px; border-radius:6px; border:1px solid rgba(100,160,255,0.2); background:rgba(20,30,60,0.6); color:#8fa3d9; font-size:12px; cursor:pointer; }
+.fb-card .fb-actions button:hover { background:rgba(40,60,100,0.6); color:#fff; }
+.empty { text-align:center; color:#5a6a95; padding:60px 20px; font-size:15px; }
+.loading { text-align:center; padding:40px; color:#8fa3d9; }
+.error { background:rgba(255,50,50,0.1); border:1px solid rgba(255,50,50,0.3); border-radius:8px; padding:12px 16px; color:#ff8a80; font-size:14px; margin-bottom:16px; }
+.local-section { margin-top:30px; border-top:1px solid rgba(100,160,255,0.1); padding-top:20px; }
+.local-section h3 { color:#8fa3d9; font-size:16px; margin-bottom:12px; }
+.tab-bar { display:flex; gap:6px; margin-bottom:16px; }
+.tab-bar .tab { padding:6px 16px; border-radius:8px; background:rgba(255,255,255,0.05); color:#8fa3d9; font-size:13px; cursor:pointer; border:1px solid rgba(255,255,255,0.08); }
+.tab-bar .tab.active { background:rgba(100,160,255,0.2); color:#fff; border-color:rgba(100,160,255,0.4); }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>飞机大战 · 反馈管理后台</h1>
+  <div class="stats">
+    <div>总反馈 <b id="total-count">0</b></div>
+    <div>今日 <b id="today-count">0</b></div>
+  </div>
+</div>
+<div class="container">
+  <div class="token-bar">
+    <div style="flex:1">
+      <div style="display:flex;gap:12px;align-items:center;">
+        <label>GitHub Token：</label>
+        <input type="password" id="token-input" placeholder="输入 GitHub Personal Access Token">
+        <button id="load-btn">加载反馈</button>
+      </div>
+      <div class="hint">Token 仅存在本地浏览器，不会上传。用于读取仓库 Issues。</div>
+    </div>
+  </div>
+  <div id="error-box"></div>
+  <div class="tab-bar">
+    <div class="tab active" data-source="github">GitHub Issues</div>
+    <div class="tab" data-source="local">本地数据</div>
+  </div>
+  <div class="filter-bar">
+    <select id="sort-select">
+      <option value="newest">最新优先</option>
+      <option value="oldest">最早优先</option>
+    </select>
+    <input type="text" id="search-input" placeholder="搜索玩家或内容..." style="width:200px;">
+    <button class="refresh-btn" id="refresh-btn">刷新</button>
+    <button class="refresh-btn" id="export-btn">导出 JSON</button>
+  </div>
+  <div id="fb-list" class="fb-list"></div>
+</div>
+<script>
+const REPO = 'ybzz33/ace-fighter';
+let allIssues = [];
+let currentSource = 'github';
+let localFeedback = [];
+
+try { localFeedback = JSON.parse(localStorage.getItem('acf_feedback')) || []; } catch(e) { localFeedback = []; }
+
+const tokenInput = document.getElementById('token-input');
+const savedToken = localStorage.getItem('acf_admin_token');
+if (savedToken) tokenInput.value = savedToken;
+
+document.getElementById('load-btn').addEventListener('click', loadFeedback);
+document.getElementById('refresh-btn').addEventListener('click', loadFeedback);
+document.getElementById('export-btn').addEventListener('click', exportData);
+document.getElementById('sort-select').addEventListener('change', renderList);
+document.getElementById('search-input').addEventListener('input', renderList);
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentSource = tab.dataset.source;
+    renderList();
+  });
+});
+
+async function loadFeedback() {
+  const token = tokenInput.value.trim();
+  if (!token) { showError('请输入 GitHub Token'); return; }
+  localStorage.setItem('acf_admin_token', token);
+  clearError();
+  document.getElementById('fb-list').innerHTML = '<div class="loading">加载中...</div>';
+  try {
+    const resp = await fetch('https://api.github.com/repos/' + REPO + '/issues?labels=feedback&state=all&per_page=100&sort=created&direction=desc', {
+      headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!resp.ok) { const err = await resp.json(); showError('加载失败: ' + (err.message || resp.status)); return; }
+    const issues = await resp.json();
+    allIssues = issues.map(issue => {
+      const bodyLines = (issue.body || '').split('\n');
+      let name = '匿名', time = '', mode = '', score = '', wave = '', text = '';
+      for (const line of bodyLines) {
+        if (line.startsWith('**玩家：**')) name = line.replace('**玩家：**', '').trim();
+        else if (line.startsWith('**时间：**')) time = line.replace('**时间：**', '').trim();
+        else if (line.startsWith('**模式：**')) mode = line.replace('**模式：**', '').trim();
+        else if (line.startsWith('**分数：**')) score = line.replace('**分数：**', '').trim();
+        else if (line.startsWith('**波次：**')) wave = line.replace('**波次：**', '').trim();
+      }
+      const sepIdx = (issue.body || '').indexOf('---');
+      if (sepIdx >= 0) text = issue.body.substring(sepIdx + 3).trim();
+      else text = issue.body || '';
+      return { name, time, mode, score, wave, text, createdAt: issue.created_at, issueUrl: issue.html_url, issueNumber: issue.number, state: issue.state };
+    });
+    renderList();
+  } catch(e) { showError('网络错误: ' + e.message); }
+}
+
+function renderList() {
+  const list = document.getElementById('fb-list');
+  let data = currentSource === 'github' ? allIssues : localFeedback.map(fb => {
+    const d = new Date(fb.time);
+    return { name: fb.name || '匿名', time: formatTime(d), text: fb.text, createdAt: d.toISOString() };
+  });
+  const search = document.getElementById('search-input').value.trim().toLowerCase();
+  if (search) data = data.filter(fb => (fb.name || '').toLowerCase().includes(search) || (fb.text || '').toLowerCase().includes(search));
+  const sort = document.getElementById('sort-select').value;
+  data.sort((a, b) => sort === 'newest' ? (b.createdAt || '').localeCompare(a.createdAt || '') : (a.createdAt || '').localeCompare(b.createdAt || ''));
+  document.getElementById('total-count').textContent = currentSource === 'github' ? allIssues.length : localFeedback.length;
+  const today = new Date().toISOString().slice(0, 10);
+  const todayCount = data.filter(fb => (fb.createdAt || '').slice(0, 10) === today).length;
+  document.getElementById('today-count').textContent = todayCount;
+  if (data.length === 0) { list.innerHTML = '<div class="empty">暂无反馈数据</div>'; return; }
+  list.innerHTML = data.map(fb => {
+    const meta = [];
+    if (fb.mode) meta.push('<span>模式: ' + fb.mode + '</span>');
+    if (fb.score) meta.push('<span>分数: ' + fb.score + '</span>');
+    if (fb.wave) meta.push('<span>波次: ' + fb.wave + '</span>');
+    const actions = [];
+    if (fb.issueUrl) actions.push('<a href="' + fb.issueUrl + '" target="_blank" style="color:#8fa3d9;text-decoration:none;font-size:12px;">查看 Issue #' + fb.issueNumber + '</a>');
+    return '<div class="fb-card"><div class="fb-head"><span class="fb-name">' + esc(fb.name) + '</span><span class="fb-time">' + esc(fb.time || '') + '</span></div>' + (meta.length ? '<div class="fb-meta">' + meta.join('') + '</div>' : '') + '<div class="fb-text">' + esc(fb.text) + '</div>' + (actions.length ? '<div class="fb-actions">' + actions.join('') + '</div>' : '') + '</div>';
+  }).join('');
+}
+
+function formatTime(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0') + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function showError(msg) { document.getElementById('error-box').innerHTML = '<div class="error">' + esc(msg) + '</div>'; }
+function clearError() { document.getElementById('error-box').innerHTML = ''; }
+function exportData() {
+  const data = currentSource === 'github' ? allIssues : localFeedback;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'feedback_' + Date.now() + '.json'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+if (savedToken) { loadFeedback(); }
+else { document.getElementById('fb-list').innerHTML = '<div class="empty">请输入 GitHub Token 后点击"加载反馈"</div>'; }
+</script>
+</body>
+</html>
