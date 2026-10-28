@@ -33,16 +33,62 @@ html,body { width:100%; height:100%; overflow:hidden; background:#02030a; font-f
 .sk b { font-size:18px; }
 @media (pointer:coarse), (hover:none) { #controls { display:block; } #hint { display:none; } }
 @media (max-width:640px){ #hint{ font-size:10px; } }
+#leaderboard-panel {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:340px; background:rgba(8,12,36,0.92); backdrop-filter:blur(12px);
+  border:1px solid rgba(100,160,255,0.25); border-radius:16px;
+  padding:24px 28px; z-index:30; display:none;
+  box-shadow:0 0 40px rgba(60,120,255,0.2);
+}
+#leaderboard-panel.visible { display:block; }
+#leaderboard-panel h3 {
+  text-align:center; color:#ffd166; font-size:20px; margin-bottom:16px;
+  text-shadow:0 0 12px rgba(255,209,102,0.4);
+}
+.lb-tabs { display:flex; gap:8px; margin-bottom:14px; }
+.lb-tab {
+  flex:1; padding:7px 0; text-align:center; border-radius:8px;
+  background:rgba(255,255,255,0.06); color:#8fa3d9; font-size:13px;
+  cursor:pointer; border:1px solid rgba(255,255,255,0.1); transition:all 0.2s;
+}
+.lb-tab.active { background:rgba(100,160,255,0.2); color:#fff; border-color:rgba(100,160,255,0.5); }
+.lb-list { list-style:none; padding:0; margin:0; }
+.lb-item {
+  display:flex; align-items:center; padding:8px 10px; margin-bottom:4px;
+  border-radius:8px; background:rgba(255,255,255,0.03); font-size:14px; color:#cfe3ff;
+}
+.lb-item .rank { width:28px; font-weight:bold; color:#ffd166; font-size:15px; }
+.lb-item .rank.r1 { color:#ffd700; font-size:17px; }
+.lb-item .rank.r2 { color:#c0c0c0; }
+.lb-item .rank.r3 { color:#cd7f32; }
+.lb-item .lb-score { flex:1; text-align:right; font-weight:bold; color:#fff; font-size:16px; }
+.lb-item .lb-wave { color:#8fa3d9; font-size:12px; margin-left:10px; }
+.lb-empty { text-align:center; color:#5a6a95; font-size:13px; padding:20px 0; }
+.lb-close {
+  display:block; margin:16px auto 0; padding:8px 28px; border-radius:8px;
+  background:rgba(100,160,255,0.2); color:#cfe3ff; border:1px solid rgba(100,160,255,0.4);
+  font-size:14px; cursor:pointer; font-family:"Microsoft YaHei",sans-serif;
+}
+.lb-close:hover { background:rgba(100,160,255,0.35); }
 </style>
 </head>
 <body>
 <div id="wrap">
 <canvas id="gameCanvas"></canvas>
 </div>
-<div id="invincible-hud">️ 无敌模式 (I键切换)</div>
+<div id="invincible-hud">️ 无敌模式</div>
+<div id="leaderboard-panel">
+  <h3> 排行榜</h3>
+  <div class="lb-tabs">
+    <div class="lb-tab active" data-mode="normal">普通模式</div>
+    <div class="lb-tab" data-mode="invincible">无敌模式</div>
+  </div>
+  <ul class="lb-list" id="lb-list"></ul>
+  <button class="lb-close" id="lb-close">关闭</button>
+</div>
 <div id="hint">
 移动: 方向键 / WASD / 鼠标 &nbsp;·&nbsp; 射击: 空格(可按住) 或 鼠标左键<br>
-技能: 1=能量护盾 2=全屏歼灭 3=火力全开 &nbsp;·&nbsp; I=无敌模式 &nbsp;·&nbsp; P 暂停 &nbsp;·&nbsp; Enter 开始
+技能: 1=能量护盾 2=全屏歼灭 3=火力全开 &nbsp;·&nbsp; P 暂停 &nbsp;·&nbsp; M 静音
 </div>
 <div id="controls">
 <div id="joy-base"><div id="joy-knob"></div></div>
@@ -179,7 +225,12 @@ canvas.addEventListener('mousemove', e => {
     Input.mouseY = (e.clientY - r.top) / r.height * H;
     Input.usingMouse = true;
 });
-canvas.addEventListener('mousedown', e => { if (e.button === 0) { Input.shoot = true; Input.usingMouse = true; } });
+canvas.addEventListener('mousedown', e => {
+    if (e.button === 0) {
+        Input.shoot = true; Input.usingMouse = true;
+        if (game.state === GS.MENU) handleMenuClick(e);
+    }
+});
 window.addEventListener('mouseup', e => { if (e.button === 0) Input.shoot = false; });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 
@@ -190,10 +241,34 @@ function canvasPos(e) {
     const r = canvas.getBoundingClientRect();
     return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
 }
+function handleMenuClick(e) {
+    const r = canvas.getBoundingClientRect();
+    const mx = (e.clientX - r.left) / r.width * W;
+    const my = (e.clientY - r.top) / r.height * H;
+    for (const btn of menuButtons) {
+        if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+            if (btn.action === 'leaderboard') { showLeaderboard(); }
+            else { gameMode = btn.action; startGame(btn.action); }
+            return;
+        }
+    }
+}
+
 canvas.addEventListener('touchstart', e => {
     e.preventDefault(); Audio.ensure && Audio.ensure();
     const p = canvasPos(e.touches[0]);
-    if (game.state === GS.MENU || game.state === GS.OVER) { Input.tapStart = true; return; }
+    if (game.state === GS.MENU) {
+        const mx = p.x, my = p.y;
+        for (const btn of menuButtons) {
+            if (mx >= btn.x && mx <= btn.x + btn.w && my >= btn.y && my <= btn.y + btn.h) {
+                if (btn.action === 'leaderboard') { showLeaderboard(); }
+                else { gameMode = btn.action; startGame(btn.action); }
+                return;
+            }
+        }
+        Input.tapStart = true; return;
+    }
+    if (game.state === GS.OVER) { Input.tapStart = true; return; }
     if (game.state === GS.PLAY) { Input.shoot = true; Input.prevShoot = true; }
 }, { passive:false });
 canvas.addEventListener('touchend', e => { e.preventDefault(); Input.shoot = false; }, { passive:false });
@@ -240,6 +315,38 @@ const player = {
 };
 let bullets = [], enemies = [], ebullets = [], particles = [], stars = [], powerups = [], boss = null;
 let invincibleMode = false;
+let gameMode = 'normal';
+let leaderboard = { normal: [], invincible: [] };
+const LB_KEY = 'acf_leaderboard';
+const LB_MAX = 10;
+
+function loadLeaderboard() {
+    try {
+        const d = JSON.parse(localStorage.getItem(LB_KEY));
+        if (d && d.normal) leaderboard = d;
+    } catch(e) {}
+}
+function saveLeaderboard() {
+    try { localStorage.setItem(LB_KEY, JSON.stringify(leaderboard)); } catch(e) {}
+}
+function addScore(mode, score, wave) {
+    const list = leaderboard[mode];
+    list.push({ score, wave, date: Date.now() });
+    list.sort((a, b) => b.score - a.score);
+    if (list.length > LB_MAX) list.length = LB_MAX;
+    saveLeaderboard();
+}
+function renderLeaderboard(mode) {
+    const list = leaderboard[mode] || [];
+    const ul = $('lb-list');
+    if (list.length === 0) { ul.innerHTML = '<li class="lb-empty">暂无记录，快去挑战吧！</li>'; return; }
+    ul.innerHTML = list.map((item, i) => {
+        const rc = i === 0 ? 'r1' : (i === 1 ? 'r2' : (i === 2 ? 'r3' : ''));
+        const medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : (i+1)));
+        return `<li class="lb-item"><span class="rank ${rc}">${medal}</span><span class="lb-score">${String(item.score).padStart(6,'0')}</span><span class="lb-wave">波次 ${item.wave}</span></li>`;
+    }).join('');
+}
+loadLeaderboard();
 
 const resetPlayer = () => {
     Object.assign(player, { x: W/2, y: H-130, hp: 100, fireCd: 0, invincible: 2, shieldT: 0, powerT: 0, skillCd: [0,0,0], flashT: 0, alive: true });
@@ -248,8 +355,8 @@ const resetGame = () => {
     bullets = []; enemies = []; ebullets = []; particles = []; powerups = []; boss = null;
     game.score = 0; game.wave = 1; game.time = 0; game.shake = 0; game.spawnTimer = 1.2; game.bossTimer = 0;
     game.combo = 0; game.comboMax = 0; game.kills = 0; game.flash = 0;
-    invincibleMode = false;
-    $('invincible-hud').classList.remove('visible');
+    invincibleMode = (gameMode === 'invincible');
+    $('invincible-hud').classList.toggle('visible', invincibleMode);
     resetPlayer();
 };
 
@@ -408,7 +515,8 @@ function hurtPlayer(dmg, srcX, srcY) {
         p.hp = 0; p.alive = false;
         bigExplosion(p.x, p.y, '#ff7b54'); Audio.playerDie();
         game.state = GS.OVER; Audio.stopBGM(); Audio.gameover();
-        if (game.score > game.best) { game.best = game.score; try{localStorage.setItem('acf_best', game.best);}catch(e){} }
+        addScore(gameMode, game.score, game.wave);
+        if (gameMode === 'normal' && game.score > game.best) { game.best = game.score; try{localStorage.setItem('acf_best', game.best);}catch(e){} }
     }
 }
 
@@ -773,7 +881,8 @@ function drawHUD() {
         ctx.fillText(s.key + ' ' + s.name, x + size/2, y + size - 4);
     }
     ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(160,180,255,0.85)'; ctx.font = 'bold 12px "Microsoft YaHei"';
-    ctx.fillText('毅博老师 · 飞机大战', W/2, H - 14);
+    const modeLabel = invincibleMode ? ' 无敌模式' : '';
+    ctx.fillText('毅博老师 · 飞机大战' + modeLabel, W/2, H - 14);
 }
 
 function drawSkillIcon(ki, bx, by, size, color) {
@@ -809,12 +918,12 @@ function rr(x, y, w, h, r) { if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); 
 
 function drawMenu() {
     drawBackground(); ctx.textAlign = 'center';
-    ctx.save(); ctx.translate(W/2, H/2 - 40);
+    ctx.save(); ctx.translate(W/2, H/2 - 80);
     const glow = ctx.createRadialGradient(0,0,0, 0,0,180);
     glow.addColorStop(0, 'rgba(80,140,255,0.22)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(0,0,180,0,Math.PI*2); ctx.fill();
     ctx.font = 'bold 26px "Microsoft YaHei"'; ctx.fillStyle = '#7df9ff';
-    ctx.shadowColor = '#4fc3f7'; ctx.shadowBlur = 20; ctx.fillText('✈ 毅博老师 ✈', 0, -50); ctx.shadowBlur = 0;
+    ctx.shadowColor = '#4fc3f7'; ctx.shadowBlur = 20; ctx.fillText('✈ 毅博老师 ', 0, -50); ctx.shadowBlur = 0;
     ctx.font = 'bold 44px "Microsoft YaHei"';
     const grad = ctx.createLinearGradient(0,-40,0,20);
     grad.addColorStop(0, '#fff'); grad.addColorStop(0.5, '#9fe7ff'); grad.addColorStop(1, '#4fc3f7');
@@ -822,32 +931,60 @@ function drawMenu() {
     ctx.font = '15px "Microsoft YaHei"'; ctx.fillStyle = '#aab8e8'; ctx.fillText('A C E F I G H T E R', 0, 34);
     ctx.restore();
     const isTouch = window.matchMedia && matchMedia('(pointer:coarse)').matches;
-    const startHint = isTouch ? '点击屏幕 开始游戏' : '按 Enter / 空格 开始游戏';
-    const blink = 0.6 + Math.sin(game.time*3)*0.4;
-    ctx.globalAlpha = clamp(blink, 0.3, 1); ctx.fillStyle = '#ffd166'; ctx.font = 'bold 20px "Microsoft YaHei"';
-    ctx.fillText(startHint, W/2, H - 170); ctx.globalAlpha = 1;
+    const btnW = 180, btnH = 46, btnGap = 14;
+    const btnY = H/2 + 20;
+    const btn1X = W/2 - btnW - btnGap/2, btn2X = W/2 + btnGap/2;
+    const btn3W = 140, btn3X = W/2 - btn3W/2, btn3Y = btnY + btnH + 16;
+    const blink = 0.7 + Math.sin(game.time*3)*0.3;
+    ctx.globalAlpha = clamp(blink, 0.4, 1);
+    ctx.fillStyle = 'rgba(30,80,180,0.35)'; ctx.strokeStyle = 'rgba(100,180,255,0.7)'; ctx.lineWidth = 2;
+    ctx.beginPath(); rr(btn1X, btnY, btnW, btnH, 12); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 18px "Microsoft YaHei"'; ctx.textAlign = 'center';
+    ctx.fillText('普通模式', btn1X + btnW/2, btnY + btnH/2 + 6);
+    ctx.fillStyle = 'rgba(180,120,20,0.35)'; ctx.strokeStyle = 'rgba(255,200,60,0.7)';
+    ctx.beginPath(); rr(btn2X, btnY, btnW, btnH, 12); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffd166'; ctx.fillText('无敌模式', btn2X + btnW/2, btnY + btnH/2 + 6);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = 'rgba(20,40,80,0.4)'; ctx.strokeStyle = 'rgba(100,160,255,0.4)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); rr(btn3X, btn3Y, btn3W, 38, 10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#8fa3d9'; ctx.font = '14px "Microsoft YaHei"';
+    ctx.fillText(' 排行榜', btn3X + btn3W/2, btn3Y + 24);
     ctx.font = '13px "Microsoft YaHei"'; ctx.fillStyle = '#8fa3d9';
     const moveHint = isTouch ? '左摇杆移动 · 右侧射击键开火' : '方向键 / WASD / 鼠标移动 · 空格或鼠标射击';
-    ctx.fillText(moveHint, W/2, H - 130);
-    ctx.fillText('技能 1=护盾 2=全屏轰炸 3=火力全开 · I=无敌模式 · P 暂停', W/2, H - 108);
-    if (game.best > 0) { ctx.font = 'bold 15px "Microsoft YaHei"'; ctx.fillStyle = '#ffd166'; ctx.fillText('历史最高分：' + game.best, W/2, 80); }
+    ctx.fillText(moveHint, W/2, H - 100);
+    ctx.fillText('技能 1=护盾 2=全屏轰炸 3=火力全开 · P 暂停 · M 静音', W/2, H - 78);
+    if (game.best > 0) { ctx.font = 'bold 14px "Microsoft YaHei"'; ctx.fillStyle = '#ffd166'; ctx.fillText('普通最高：' + game.best, W/2, 80); }
+    const invBest = leaderboard.invincible.length > 0 ? leaderboard.invincible[0].score : 0;
+    if (invBest > 0) { ctx.font = 'bold 14px "Microsoft YaHei"'; ctx.fillStyle = '#ffaa44'; ctx.fillText('无敌最高：' + invBest, W/2, 100); }
+    menuButtons = [
+        { x: btn1X, y: btnY, w: btnW, h: btnH, action: 'normal' },
+        { x: btn2X, y: btnY, w: btnW, h: btnH, action: 'invincible' },
+        { x: btn3X, y: btn3Y, w: btn3W, h: 38, action: 'leaderboard' },
+    ];
 }
+let menuButtons = [];
 
 function drawGameOver() {
     ctx.fillStyle = 'rgba(2,3,12,0.72)'; ctx.fillRect(0, 0, W, H);
     ctx.textAlign = 'center'; ctx.font = 'bold 52px "Microsoft YaHei"';
     ctx.fillStyle = '#ff5252'; ctx.shadowColor = '#ff5252'; ctx.shadowBlur = 26;
-    ctx.fillText('战败', W/2, H/2 - 90); ctx.shadowBlur = 0;
+    ctx.fillText('战败', W/2, H/2 - 100); ctx.shadowBlur = 0;
+    if (gameMode === 'invincible') {
+        ctx.font = 'bold 16px "Microsoft YaHei"'; ctx.fillStyle = '#ffd166';
+        ctx.fillText('（无敌模式）', W/2, H/2 - 65);
+    }
     ctx.font = 'bold 24px "Microsoft YaHei"'; ctx.fillStyle = '#fff';
     ctx.fillText('最终得分 ' + game.score, W/2, H/2 - 30);
-    const isNew = game.score >= game.best && game.score > 0;
+    const isNew = gameMode === 'normal' && game.score >= game.best && game.score > 0;
     ctx.font = '15px "Microsoft YaHei"'; ctx.fillStyle = isNew ? '#69f0ae' : '#9fb3ff';
     ctx.fillText((isNew ? '🎉 新纪录！ ' : '最高 ') + game.best, W/2, H/2 + 4);
+    const lbEntry = leaderboard[gameMode] ? leaderboard[gameMode].findIndex(s => s.score === game.score) : -1;
+    if (lbEntry >= 0) { ctx.font = 'bold 14px "Microsoft YaHei"'; ctx.fillStyle = '#ffd166'; ctx.fillText('排行榜第 ' + (lbEntry + 1) + ' 名', W/2, H/2 + 30); }
     ctx.font = 'bold 18px "Microsoft YaHei"'; ctx.fillStyle = '#ffd166';
     const blink = 0.6 + Math.sin(game.time*3)*0.4;
     ctx.globalAlpha = clamp(blink, 0.3, 1);
     const isTouch = window.matchMedia && matchMedia('(pointer:coarse)').matches;
-    ctx.fillText(isTouch ? '点击屏幕 重新开始' : '按 Enter 重新开始', W/2, H/2 + 70);
+    ctx.fillText(isTouch ? '点击屏幕 返回菜单' : '按 Enter 返回菜单', W/2, H/2 + 70);
     ctx.globalAlpha = 1;
 }
 
@@ -863,21 +1000,23 @@ let lastT = 0;
 function frame(ts) {
     const dt = clamp((ts - lastT) / 1000, 0, 0.05);
     lastT = ts;
-    if (Input.keydown['Enter'] || Input.keydown['Space']) {
-        if (game.state === GS.MENU) startGame();
-        else if (game.state === GS.OVER) startGame();
+    if (game.state === GS.MENU) {
+        if (Input.keydown['Digit1']) { gameMode = 'normal'; startGame('normal'); }
+        if (Input.keydown['Digit2']) { gameMode = 'invincible'; startGame('invincible'); }
+        if (Input.keydown['KeyL'] || Input.keydown['Tab']) { showLeaderboard(); Input.keydown = {}; Input.keyup = {}; requestAnimationFrame(frame); return; }
     }
-    if (Input.tapStart && (game.state === GS.MENU || game.state === GS.OVER)) startGame();
+    if (Input.keydown['Enter'] || Input.keydown['Space']) {
+        if (game.state === GS.MENU) { gameMode = 'normal'; startGame('normal'); }
+        else if (game.state === GS.OVER) { game.state = GS.MENU; }
+    }
+    if (Input.tapStart && (game.state === GS.MENU || game.state === GS.OVER)) {
+        if (game.state === GS.MENU) { gameMode = 'normal'; startGame('normal'); }
+        else { game.state = GS.MENU; }
+    }
     Input.tapStart = false;
     if (Input.keydown['KeyP'] && game.state === GS.PLAY) game.state = GS.PAUSE;
     else if (Input.keydown['KeyP'] && game.state === GS.PAUSE) game.state = GS.PLAY;
     if (Input.keydown['KeyM']) Audio.toggleMute();
-    if (Input.keydown['KeyI'] && game.state === GS.PLAY) {
-        invincibleMode = !invincibleMode;
-        const hud = $('invincible-hud');
-        if (invincibleMode) { hud.classList.add('visible'); Audio.invincibleOn(); }
-        else { hud.classList.remove('visible'); Audio.invincibleOff(); }
-    }
     game.time += dt;
     updateStars(dt); updateParticles(dt);
     if (game.state === GS.PLAY) {
@@ -906,7 +1045,25 @@ function frame(ts) {
     requestAnimationFrame(frame);
 }
 
-function startGame() { resetGame(); game.state = GS.PLAY; Audio.unlock(); Audio.startBGM(); }
+function startGame(mode) {
+    if (mode) gameMode = mode;
+    resetGame(); game.state = GS.PLAY; Audio.unlock(); Audio.startBGM();
+}
+
+function showLeaderboard() {
+    const panel = $('leaderboard-panel');
+    panel.classList.add('visible');
+    renderLeaderboard('normal');
+    document.querySelectorAll('.lb-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.mode === 'normal');
+        tab.onclick = () => {
+            document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            renderLeaderboard(tab.dataset.mode);
+        };
+    });
+}
+$('lb-close').addEventListener('click', () => { $('leaderboard-panel').classList.remove('visible'); });
 
 try { game.best = parseInt(localStorage.getItem('acf_best') || '0', 10) || 0; } catch(e) {}
 
